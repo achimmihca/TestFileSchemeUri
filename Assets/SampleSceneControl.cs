@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
@@ -13,7 +14,7 @@ public class SampleSceneControl : MonoBehaviour
     private void Start()
     {
         // Test image files
-        // An image file with a space character AND a plus character does not work.
+        // An image file with a space character AND a plus character only works when wrapping it in a System.Uri object.
         string imageFolder = Application.dataPath + "/Images";
         List<string> imageFilePaths = Directory.GetFiles(imageFolder)
             .Where(fileName => fileName.EndsWith(".png"))
@@ -21,7 +22,7 @@ public class SampleSceneControl : MonoBehaviour
         imageFilePaths.ForEach(imageFilePath => TestLoadTextureFromUri(imageFilePath));
 
         // Test audio files
-        // An audio file with a space character AND a plus character does not work.
+        // An audio file with a space character AND a plus character only works when wrapping it in a System.Uri object.
         string audioFolder = Application.dataPath + "/Audio";
         List<string> audioFilePaths = Directory.GetFiles(audioFolder)
             .Where(fileName => fileName.EndsWith(".ogg"))
@@ -48,13 +49,13 @@ public class SampleSceneControl : MonoBehaviour
             return;
         }
 
-        string uri = "file://" + absolutePath;
+        string uri = absolutePath;
         StartCoroutine(LoadTextureFromFile(uri));
     }
 
     private IEnumerator LoadTextureFromFile(string uri)
     {
-        using UnityWebRequest webRequest = UnityWebRequestTexture.GetTexture(uri);
+        using UnityWebRequest webRequest = UnityWebRequestTexture.GetTexture(new Uri(uri));
         DownloadHandlerTexture downloadHandler = webRequest.downloadHandler as DownloadHandlerTexture;
         webRequest.SendWebRequest();
 
@@ -90,13 +91,13 @@ public class SampleSceneControl : MonoBehaviour
             return;
         }
 
-        string uri = "file://" + absolutePath;
+        string uri = absolutePath;
         StartCoroutine(LoadAudioFromFile(uri));
     }
 
     private IEnumerator LoadAudioFromFile(string uri)
     {
-        using UnityWebRequest webRequest = UnityWebRequestMultimedia.GetAudioClip(uri, AudioType.OGGVORBIS);
+        using UnityWebRequest webRequest = UnityWebRequestMultimedia.GetAudioClip(new Uri(uri), AudioType.OGGVORBIS);
         DownloadHandlerAudioClip downloadHandler = webRequest.downloadHandler as DownloadHandlerAudioClip;
         webRequest.SendWebRequest();
 
