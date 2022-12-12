@@ -13,13 +13,30 @@ public class SampleSceneControl : MonoBehaviour
 
     private void Start()
     {
+        // Test shared network folder.
+        // In this example "AAS-LAPTOP" is the Windows computer name of the local machine.
+        // Note that "localhost" and "127.0.0.1" did not work for some reason in my tests.
+        var networkImagePaths = new List<string>()
+        {
+            @"//AAS-LAPTOP/Users/andre/Downloads/NetTest/cover.jpg",
+            @"\\AAS-LAPTOP\Users\andre\Downloads\NetTest\cover.jpg",
+        };
+        networkImagePaths.ForEach(networkImagePath => TestLoadTextureFromAbsoluteFilePath(networkImagePath));
+
+        var networkAudioPaths = new List<string>()
+        {
+            @"//AAS-LAPTOP/Users/andre/Downloads/NetTest/audio.mp3",
+            @"\\AAS-LAPTOP\Users\andre\Downloads\NetTest\audio.mp3",
+        };
+        networkAudioPaths.ForEach(networkAudioPath => TestLoadAudioFromAbsoluteFilePath(networkAudioPath));
+
         // Test image files
         // An image file with a space character AND a plus character only works when wrapping it in a System.Uri object.
         string imageFolder = Application.dataPath + "/Images";
         List<string> imageFilePaths = Directory.GetFiles(imageFolder)
             .Where(fileName => fileName.EndsWith(".png"))
             .ToList();
-        imageFilePaths.ForEach(imageFilePath => TestLoadTextureFromUri(imageFilePath));
+        imageFilePaths.ForEach(imageFilePath => TestLoadTextureFromAbsoluteFilePath(imageFilePath));
 
         // Test audio files
         // An audio file with a space character AND a plus character only works when wrapping it in a System.Uri object.
@@ -27,7 +44,7 @@ public class SampleSceneControl : MonoBehaviour
         List<string> audioFilePaths = Directory.GetFiles(audioFolder)
             .Where(fileName => fileName.EndsWith(".ogg"))
             .ToList();
-        audioFilePaths.ForEach(audioFilePath => TestLoadAudioFromUri(audioFilePath));
+        audioFilePaths.ForEach(audioFilePath => TestLoadAudioFromAbsoluteFilePath(audioFilePath));
 
         // Test videos
         // All files work.
@@ -40,7 +57,7 @@ public class SampleSceneControl : MonoBehaviour
                                         && fileName.Contains(" "));
     }
 
-    private void TestLoadTextureFromUri(string absolutePath)
+    private void TestLoadTextureFromAbsoluteFilePath(string absolutePath)
     {
         Debug.Log($"Absolute path: {absolutePath}");
         Debug.Log("File exists: " + File.Exists(absolutePath));
@@ -49,11 +66,11 @@ public class SampleSceneControl : MonoBehaviour
             return;
         }
 
-        string uri = absolutePath;
-        StartCoroutine(LoadTextureFromFile(uri));
+        string uri = AbsoluteFilePathToUri(absolutePath);
+        StartCoroutine(LoadTextureFromUri(uri));
     }
 
-    private IEnumerator LoadTextureFromFile(string uri)
+    private IEnumerator LoadTextureFromUri(string uri)
     {
         using UnityWebRequest webRequest = UnityWebRequestTexture.GetTexture(new Uri(uri));
         DownloadHandlerTexture downloadHandler = webRequest.downloadHandler as DownloadHandlerTexture;
@@ -82,7 +99,7 @@ public class SampleSceneControl : MonoBehaviour
         Destroy(texture);
     }
 
-    private void TestLoadAudioFromUri(string absolutePath)
+    private void TestLoadAudioFromAbsoluteFilePath(string absolutePath)
     {
         Debug.Log($"Absolute path: {absolutePath}");
         Debug.Log("File exists: " + File.Exists(absolutePath));
@@ -91,13 +108,13 @@ public class SampleSceneControl : MonoBehaviour
             return;
         }
 
-        string uri = absolutePath;
+        string uri = AbsoluteFilePathToUri(absolutePath);
         StartCoroutine(LoadAudioFromFile(uri));
     }
 
     private IEnumerator LoadAudioFromFile(string uri)
     {
-        using UnityWebRequest webRequest = UnityWebRequestMultimedia.GetAudioClip(new Uri(uri), AudioType.OGGVORBIS);
+        using UnityWebRequest webRequest = UnityWebRequestMultimedia.GetAudioClip(new Uri(uri), AudioType.UNKNOWN);
         DownloadHandlerAudioClip downloadHandler = webRequest.downloadHandler as DownloadHandlerAudioClip;
         webRequest.SendWebRequest();
 
@@ -122,5 +139,28 @@ public class SampleSceneControl : MonoBehaviour
 
         // Destroy object, this was just for testing.
         Destroy(audioClip);
+    }
+
+    private static string AbsoluteFilePathToUri(string absolutePath)
+    {
+        string uri;
+        if (absolutePath.StartsWith(@"\\"))
+        {
+            // This is a network path.
+            // MUST prefix it with the file:// scheme AND an additional slash for Unity API to work.
+            // See https://forum.unity.com/threads/unitywebrequest-and-local-area-network.714353/
+            return "file:///" + absolutePath;
+        }
+
+        if (absolutePath.StartsWith("//"))
+        {
+            // This also is a network path. But because forward slashes are used, MUST prefix it with the file:// scheme ONLY for Unity API to work.
+            return "file://" + absolutePath;
+        }
+
+        // This is a local path. MUST NOT prefix it with the file:// scheme.
+        // Otherwise some paths may not work, e.g., when it contains a space AND a plus character.
+        // See https://forum.unity.com/threads/unitywebrequest-file-protocol-not-working-with-plus-character-in-path-how-to-escape-the-uri.1364499/#post-8655012
+        return absolutePath;
     }
 }
